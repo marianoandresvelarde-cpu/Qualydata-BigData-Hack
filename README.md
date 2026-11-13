@@ -78,6 +78,24 @@ Lo que no medimos pero se desprende del diseño: las etapas caras son lineales e
 3. Centro, **desde cuándo**: al elegir una narrativa se ve la línea de origen, en qué publicación apareció y qué dice cada bando. En rojo, los comentarios de cuentas coordinadas.
 4. Abajo, **quién lo empuja**: cada operación con su red de coincidencias, su horario contra el del resto, sus textos propios y cada vez que actuó en bloque.
 
+## Código y librerías previos al evento
+
+Todo el código de `qualy/`, `correr.py` y `tests/` se escribió durante el hackathon. No se reutilizó código propio anterior.
+
+Material de la organización incluido en el repo (no es trabajo del equipo): `DESAFIO.md`, `evaluacion/puntuar.py` (evaluador oficial), `ejemplos/linea_base.py` (línea base) y `datos/practica/`.
+
+Librerías públicas de código abierto, todas existentes antes del evento (ver [`requirements.txt`](requirements.txt)):
+
+| Librería | Para qué se usa |
+|---|---|
+| [pandas](https://pandas.pydata.org/) | manejo de tablas en memoria |
+| [NumPy](https://numpy.org/) | cálculo numérico |
+| [DuckDB](https://duckdb.org/) | ingesta de los CSV, limpieza y base consultable |
+| [PyArrow](https://arrow.apache.org/) | lectura y escritura de Parquet |
+| [scikit-learn](https://scikit-learn.org/) | utilidades de vectorización |
+
+No se usaron modelos de IA, embeddings ni servicios externos (costo de IA USD 0, ver `entrega/costo.json`).
+
 ## Estructura
 
 ```
