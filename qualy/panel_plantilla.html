@@ -1,0 +1,189 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Qué circula, desde cuándo y quién lo empuja</title>
+<style>
+:root{--bg:#0d1117;--panel:#161b22;--panel2:#1c232d;--line:#2a3340;--txt:#e6edf3;--mut:#8b98a8;--apoya:#3fb6a8;--rechaza:#e0a23c;--coord:#f0506e;--acc:#6ea8fe}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--txt);font:14px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+header{padding:22px 28px 14px;border-bottom:1px solid var(--line)}
+h1{margin:0 0 4px;font-size:22px;font-weight:650}
+h2{margin:0 0 12px;font-size:13px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--mut)}
+h3{margin:0 0 6px;font-size:16px}
+.sub{color:var(--mut)}
+.kpis{display:flex;flex-wrap:wrap;gap:10px;margin-top:14px}
+.kpi{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:10px 14px;min-width:128px}
+.kpi b{display:block;font-size:22px;font-weight:650}
+.kpi span{color:var(--mut);font-size:12px}
+.kpi.hot b{color:var(--coord)}
+main{display:grid;grid-template-columns:minmax(330px,400px) 1fr;gap:18px;padding:18px 28px}
+section{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:16px}
+.wide{grid-column:1/-1}
+.narr{padding:10px 12px;border:1px solid transparent;border-radius:10px;cursor:pointer;display:grid;grid-template-columns:1fr 92px;gap:4px 10px;align-items:center}
+.narr:hover{background:var(--panel2)}
+.narr.sel{background:var(--panel2);border-color:var(--acc)}
+.narr .t{font-weight:600}
+.narr .m{color:var(--mut);font-size:12px;grid-column:1}
+.bar{height:6px;border-radius:3px;overflow:hidden;display:flex;background:var(--line);grid-column:1}
+.bar i{display:block;height:100%}
+.tag{display:inline-block;font-size:11px;padding:1px 7px;border-radius:9px;margin-left:6px;font-weight:600;vertical-align:1px}
+.tag.em{background:#3a2f12;color:#f2c14e}.tag.co{background:#3d1622;color:#ff7b93}.tag.op{background:#3d1622;color:#ff7b93;cursor:pointer}
+.legend{display:flex;gap:16px;color:var(--mut);font-size:12px;margin:6px 0}
+.legend i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:5px;vertical-align:-1px}
+.cols{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:12px}
+.frase{display:flex;justify-content:space-between;gap:10px;padding:5px 0;border-bottom:1px solid var(--line)}
+.frase span:last-child{color:var(--mut);font-variant-numeric:tabular-nums}
+.lado{font-weight:650;margin-bottom:4px}
+.chips span{display:inline-block;background:var(--panel2);border:1px solid var(--line);border-radius:9px;padding:1px 8px;margin:2px 4px 2px 0;font-size:12px}
+.ops{display:grid;grid-template-columns:repeat(auto-fit,minmax(360px,1fr));gap:16px}
+.op{background:var(--panel2);border:1px solid var(--line);border-radius:12px;padding:14px}
+.op.sel{border-color:var(--coord)}
+.op ul{margin:6px 0 8px;padding-left:18px;color:#c9d4e0}
+.mini{display:grid;grid-template-columns:1fr 1fr;gap:10px;align-items:start}
+.cap{font-size:11px;color:var(--mut);text-transform:uppercase;letter-spacing:.06em;margin:8px 0 2px}
+table{width:100%;border-collapse:collapse;font-size:12px}
+td,th{padding:3px 6px;border-bottom:1px solid var(--line);text-align:left}
+th{color:var(--mut);font-weight:500}
+td.n{text-align:right;font-variant-numeric:tabular-nums}
+svg text{fill:var(--mut);font-size:10px}
+.steps{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px}
+.step{background:var(--panel2);border-radius:10px;padding:12px}
+.step b{display:block;margin-bottom:3px}
+#tip{position:fixed;pointer-events:none;background:#000c;border:1px solid var(--line);padding:4px 8px;border-radius:6px;font-size:12px;display:none;z-index:9}
+@media(max-width:900px){main{grid-template-columns:1fr}.cols,.mini{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<header>
+  <h1>Qué circula, desde cuándo y quién lo empuja</h1>
+  <div class="sub" id="sub"></div>
+  <div class="kpis" id="kpis"></div>
+</header>
+<main>
+  <section><h2>Qué circula</h2><div id="lista"></div></section>
+  <section id="detalle"></section>
+  <section class="wide"><h2>Quién lo empuja: operaciones coordinadas</h2><div class="ops" id="ops"></div></section>
+  <section class="wide"><h2>Cómo se calculó y cuánto costó</h2><div class="steps" id="steps"></div></section>
+</main>
+<div id="tip"></div>
+<script>
+const D = /*__DATOS__*/null;
+const $ = s => document.querySelector(s), fmt = n => n.toLocaleString('es-AR');
+const C = {apoya:'#3fb6a8', rechaza:'#e0a23c', coord:'#f0506e'};
+const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const t0 = new Date(D.inicio);
+const fecha = iso => { const d = new Date(iso); return d.toLocaleString('es-AR', {day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit', timeZone:'America/Argentina/Buenos_Aires'}); };
+const diaDe = b => { const d = new Date(t0.getTime() + b * D.cubeta_h * 36e5); return d.toLocaleDateString('es-AR', {day:'2-digit', month:'2-digit', timeZone:'America/Argentina/Buenos_Aires'}); };
+const tip = $('#tip');
+document.addEventListener('mousemove', e => { const t = e.target.closest('[data-tip]'); if (t) { tip.textContent = t.dataset.tip; tip.style.display = 'block'; tip.style.left = Math.min(e.clientX + 12, innerWidth - 240) + 'px'; tip.style.top = e.clientY + 14 + 'px'; } else tip.style.display = 'none'; });
+
+function spark(n) {
+  const w = 92, h = 26, tot = n.serie_apoya.map((v, i) => v + n.serie_rechaza[i] + n.serie_coord[i]), mx = Math.max(...tot, 1);
+  const pts = tot.map((v, i) => `${(i / (tot.length - 1) * w).toFixed(1)},${(h - v / mx * (h - 2)).toFixed(1)}`).join(' ');
+  return `<svg width="${w}" height="${h}" style="grid-row:1/4;grid-column:2"><polyline points="${pts}" fill="none" stroke="${n.operaciones.length ? C.coord : '#6ea8fe'}" stroke-width="1.3"/></svg>`;
+}
+function stacked(n, w, h) {
+  const k = D.cubetas, pad = {l: 34, r: 8, t: 8, b: 20}, iw = w - pad.l - pad.r, ih = h - pad.t - pad.b;
+  const series = [['rechaza', n.serie_rechaza], ['apoya', n.serie_apoya], ['coord', n.serie_coord]];
+  const tot = n.serie_apoya.map((v, i) => v + n.serie_rechaza[i] + n.serie_coord[i]), mx = Math.max(...tot, 1), bw = iw / k;
+  let s = `<svg viewBox="0 0 ${w} ${h}" width="100%">`;
+  for (let g = 0; g <= 2; g++) { const y = pad.t + ih - ih * g / 2; s += `<line x1="${pad.l}" x2="${w - pad.r}" y1="${y}" y2="${y}" stroke="#2a3340"/><text x="${pad.l - 5}" y="${y + 3}" text-anchor="end">${fmt(Math.round(mx * g / 2))}</text>`; }
+  for (let i = 0; i < k; i++) {
+    let y = pad.t + ih;
+    for (const [name, arr] of series) { const hh = arr[i] / mx * ih; if (hh > 0) { y -= hh; s += `<rect x="${(pad.l + i * bw + .5).toFixed(1)}" y="${y.toFixed(1)}" width="${Math.max(bw - 1, 1).toFixed(1)}" height="${hh.toFixed(1)}" fill="${C[name]}" data-tip="${diaDe(i)} · ${name === 'coord' ? 'coordinado' : name}: ${arr[i]}"/>`; } }
+    if (i % (24 / D.cubeta_h) === 0) s += `<text x="${pad.l + i * bw}" y="${h - 6}">${diaDe(i)}</text>`;
+  }
+  const ox = pad.l + (new Date(n.origen) - t0) / 36e5 / D.cubeta_h * bw;
+  s += `<line x1="${ox}" x2="${ox}" y1="${pad.t}" y2="${pad.t + ih}" stroke="#fff" stroke-dasharray="3 3"/><text x="${ox + 4}" y="${pad.t + 9}" style="fill:#fff">origen ${fecha(n.origen)}</text>`;
+  return s + '</svg>';
+}
+function horas(op) {
+  const w = 300, h = 86, bw = (w - 10) / 24, mo = Math.max(...D.horas_organico), mg = Math.max(...op.horas, 1);
+  let s = `<svg viewBox="0 0 ${w} ${h}" width="100%">`;
+  for (let i = 0; i < 24; i++) {
+    const ho = D.horas_organico[i] / mo * 62, hg = op.horas[i] / mg * 62;
+    s += `<rect x="${5 + i * bw}" y="${68 - ho}" width="${bw - 1}" height="${ho}" fill="#3a4656" data-tip="${i} h · resto de las cuentas"/>`;
+    s += `<rect x="${5 + i * bw + bw * .25}" y="${68 - hg}" width="${bw * .5}" height="${hg}" fill="${C.coord}" data-tip="${i} h · ${op.grupo}: ${op.horas[i]} comentarios"/>`;
+    if (i % 6 === 0) s += `<text x="${5 + i * bw}" y="${h - 4}">${i} h</text>`;
+  }
+  return s + '</svg>';
+}
+function red(op) {
+  const w = 300, h = 210, P = {}, m = 12;
+  op.detalle.forEach(c => P[c.id] = [m + c.xy[0] * (w - 2 * m), m + c.xy[1] * (h - 2 * m)]);
+  let s = `<svg viewBox="0 0 ${w} ${h}" width="100%">`;
+  for (const [a, b] of op.aristas) s += `<line x1="${P[a][0].toFixed(1)}" y1="${P[a][1].toFixed(1)}" x2="${P[b][0].toFixed(1)}" y2="${P[b][1].toFixed(1)}" stroke="${C.coord}" stroke-opacity=".16"/>`;
+  for (const c of op.detalle) s += `<circle cx="${P[c.id][0].toFixed(1)}" cy="${P[c.id][1].toFixed(1)}" r="${(3 + Math.sqrt(c.comentarios) * .6).toFixed(1)}" fill="${C.coord}" stroke="#0d1117" data-tip="@${esc(c.usuario)} · creada ${c.creada} · ${c.comentarios} comentarios"/>`;
+  return s + '</svg>';
+}
+const narrDe = id => D.narrativas.find(n => n.id === id);
+let sel = (D.narrativas.find(n => n.emergente && n.operaciones.length) || D.narrativas.find(n => n.operaciones.length) || D.narrativas[0]).id;
+
+function lista() {
+  $('#lista').innerHTML = D.narrativas.map(n => {
+    const a = n.apoya / n.n * 100, c = n.coordinados / n.n * 100;
+    return `<div class="narr ${n.id === sel ? 'sel' : ''}" data-id="${n.id}">
+      <div class="t">${esc(n.titulo)}${n.emergente ? '<span class="tag em">emergente</span>' : ''}${n.operaciones.length ? '<span class="tag co">empujada</span>' : ''}</div>
+      <div class="m">${n.id} · ${fmt(n.n)} comentarios · desde ${fecha(n.origen)}</div>
+      <div class="bar" data-tip="apoya ${a.toFixed(0)}% · rechaza ${(100 - a).toFixed(0)}% · coordinado ${c.toFixed(1)}%"><i style="width:${a}%;background:${C.apoya}"></i><i style="width:${100 - a}%;background:${C.rechaza}"></i></div>
+      ${spark(n)}</div>`;
+  }).join('');
+  document.querySelectorAll('.narr').forEach(e => e.onclick = () => { sel = e.dataset.id; lista(); detalle(); ops(); });
+}
+function detalle() {
+  const n = narrDe(sel), pi = n.pub_origen_info || {};
+  const fr = l => l.map(f => `<div class="frase"><span>${esc(f.texto)}</span><span>${fmt(f.n)}</span></div>`).join('') || '<div class="sub">sin comentarios</div>';
+  const ev = n.evidencia_postura, por = [];
+  if (ev.replica) por.push('marcas de réplica'); if (ev.variedad) por.push('variedad de redacciones'); if (ev.coordinacion) por.push('empuje coordinado'); if (ev.mayoria) por.push('cuál junta más voces genuinas');
+  $('#detalle').innerHTML = `<h2>Desde cuándo y cómo se discute</h2>
+    <h3>${esc(n.titulo)}${n.emergente ? '<span class="tag em">emergente</span>' : ''}</h3>
+    <div class="sub">Apareció el <b style="color:var(--txt)">${fecha(n.origen)}</b>${pi.titular ? ` en «${esc(pi.titular)}» (${esc(pi.fuente)})` : ''}. ${fmt(n.cuentas)} cuentas en ${n.publicaciones} publicaciones.
+    ${n.operaciones.map(o => `<span class="tag op" data-op="${o.grupo}">${o.grupo}: ${o.cuentas} cuentas coordinadas, ${fmt(o.comentarios)} comentarios</span>`).join('')}</div>
+    <div class="chips" style="margin-top:8px">${n.frases.map(f => `<span>${esc(f)}</span>`).join('')}</div>
+    <div class="legend"><span><i style="background:${C.apoya}"></i>la sostiene (${fmt(n.apoya)})</span><span><i style="background:${C.rechaza}"></i>la discute (${fmt(n.rechaza)})</span><span><i style="background:${C.coord}"></i>cuentas coordinadas (${fmt(n.coordinados)})</span><span>cada barra: ${D.cubeta_h} h</span></div>
+    ${stacked(n, 820, 230)}
+    <div class="cols"><div><div class="lado" style="color:${C.apoya}">Quienes la sostienen dicen</div>${fr(n.frases_apoya)}</div>
+    <div><div class="lado" style="color:${C.rechaza}">Quienes la discuten dicen</div>${fr(n.frases_rechaza)}</div></div>
+    <div class="sub" style="margin-top:10px;font-size:12px">Los bandos salen de quién le responde a quién; cuál de los dos sostiene la narrativa se decide por ${por.join(', ') || 'un solo bando presente'}.</div>`;
+  document.querySelectorAll('.tag.op').forEach(e => e.onclick = () => document.getElementById('op-' + e.dataset.op).scrollIntoView({behavior: 'smooth', block: 'center'}));
+}
+function ops() {
+  if (!D.operaciones.length) { $('#ops').innerHTML = '<div class="sub">No se detectaron operaciones coordinadas en este set.</div>'; return; }
+  $('#ops').innerHTML = D.operaciones.map(o => {
+    const n = narrDe(o.narrativa) || {titulo: '(sin narrativa)'};
+    return `<div class="op ${o.narrativa === sel ? 'sel' : ''}" id="op-${o.grupo}">
+      <h3>${o.grupo} · ${o.cuentas} cuentas <span class="sub" style="font-weight:400;font-size:13px">· ${fmt(o.comentarios)} comentarios · ${o.primera} → ${o.ultima}</span></h3>
+      <div>${o.postura === 'rechaza' ? 'Ataca' : 'Empuja'} <a href="#" data-n="${o.narrativa}" style="color:var(--acc)">«${esc(n.titulo)}»</a></div>
+      <ul>${o.rasgos.map(r => `<li>${esc(r)}</li>`).join('')}<li>actuó en bloque ${o.eventos.length} veces</li></ul>
+      <div class="mini"><div><div class="cap">Quién coincide con quién</div>${red(o)}</div>
+      <div><div class="cap">A qué hora comenta (rojo) vs. el resto (gris)</div>${horas(o)}
+      <div class="cap">Textos propios del grupo</div>${o.firmas.map(f => `<div class="frase"><span>${esc(f.texto)}</span><span>${f.n}</span></div>`).join('') || '<div class="sub">usa las mismas frases que el resto</div>'}</div></div>
+      <div class="cap">Cada vez que actuó en bloque</div>
+      <table><tr><th>inicio</th><th>publicación</th><th class="n">cuentas</th><th class="n">min</th></tr>${o.eventos.slice(0, 8).map(e => `<tr><td>${e.inicio}</td><td>${esc((e.titular || e.pub).slice(0, 58))}</td><td class="n">${e.cuentas}</td><td class="n">${e.minutos}</td></tr>`).join('')}</table>
+      ${o.eventos.length > 8 ? `<div class="sub" style="font-size:12px;margin-top:4px">y ${o.eventos.length - 8} más</div>` : ''}</div>`;
+  }).join('');
+  document.querySelectorAll('.op a').forEach(a => a.onclick = e => { e.preventDefault(); sel = a.dataset.n; lista(); detalle(); ops(); $('#detalle').scrollIntoView({behavior: 'smooth'}); });
+}
+function cabecera() {
+  const coord = D.operaciones.reduce((s, o) => s + o.cuentas, 0);
+  $('#sub').textContent = `Set «${D.set}» · ${fecha(D.inicio)} a ${fecha(D.fin)} · ${fmt(D.publicaciones)} publicaciones · ${fmt(D.cuentas)} cuentas`;
+  const k = [[fmt(D.comentarios), 'comentarios'], [D.narrativas.length, 'narrativas'], [D.narrativas.filter(n => n.emergente).length, 'emergentes'], [(D.ruido / D.comentarios * 100).toFixed(0) + '%', 'ruido descartado'],
+    [coord, 'cuentas coordinadas', 1], [D.operaciones.length, 'operaciones', 1], [D.costo.segundos + ' s', 'de punta a punta'], ['USD ' + D.costo.usd_ia, 'costo de IA']];
+  $('#kpis').innerHTML = k.map(x => `<div class="kpi ${x[2] ? 'hot' : ''}"><b>${x[0]}</b><span>${x[1]}</span></div>`).join('');
+}
+function pasos() {
+  const T = D.texto, a = D.asignado_por, pasos = [
+    ['1 · Almacén', `CSV crudos a Parquet con DuckDB. ${fmt(D.ingesta.comentarios_leidos)} filas leídas, ${fmt(D.ingesta.comentarios_descartados)} descartadas por duplicadas o inválidas.`],
+    ['2 · Formas canónicas', `Sin tildes, sin typos (${fmt(T.typos_corregidos)} corregidos) y sin muletillas (${T.muletillas_apertura + T.muletillas_cierre} aprendidas de los datos): ${fmt(D.comentarios)} comentarios quedan en ${fmt(T.formas_finales)} formas distintas.`],
+    ['3 · Grafo de discusión', `Dos formas quedan unidas cuando una le responde a la otra. Cada componente es una narrativa; lo que nadie discute es ruido. ${fmt(a['acompaña'] || 0)} respuestas cortas heredan narrativa y postura.`],
+    ['4 · Postura', 'Una respuesta con contenido contradice a su padre: cada narrativa se parte en dos bandos. El que afirma se distingue del que desmiente por marcas de réplica, variedad y empuje coordinado.'],
+    ['5 · Coordinación', `Cuentas que coinciden del mismo lado, en la misma publicación, una y otra vez, más de lo esperable por su actividad. ${fmt(D.pares_evaluados)} pares repetidos evaluados.`],
+    ['Costo', `${D.costo.segundos} s en total, ${fmt(Math.round(D.comentarios / D.costo.segundos))} comentarios por segundo, ${D.costo.tokens_ia} tokens de IA. ${esc(D.costo.hardware)}.`]];
+  $('#steps').innerHTML = pasos.map(p => `<div class="step"><b>${p[0]}</b><span class="sub">${p[1]}</span></div>`).join('');
+}
+cabecera(); lista(); detalle(); ops(); pasos();
+</script>
+</body>
+</html>
